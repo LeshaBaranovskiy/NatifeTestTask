@@ -1,4 +1,4 @@
-package com.example.natifetesttask.domain.repository
+package com.example.natifetesttask.domain.repository.remote
 
 import com.example.natifetesttask.common.util.result.Result
 import com.example.natifetesttask.domain.model.entity.GifsEntity

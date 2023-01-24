@@ -2,7 +2,7 @@ package com.example.natifetesttask.domain.usecase
 
 import com.example.natifetesttask.domain.model.entity.GifsEntity
 import com.example.natifetesttask.domain.params.SearchParams
-import com.example.natifetesttask.domain.repository.GifsRepository
+import com.example.natifetesttask.domain.repository.remote.GifsRepository
 import com.example.natifetesttask.domain.usecase.base.BaseUseCase
 import com.example.natifetesttask.common.util.result.Result
 

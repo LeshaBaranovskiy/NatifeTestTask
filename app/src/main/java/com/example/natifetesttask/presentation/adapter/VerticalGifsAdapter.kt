@@ -8,7 +8,8 @@ import com.example.natifetesttask.presentation.viewholder.VerticalGifsViewHolder
 
 class VerticalGifsAdapter(
     private val context: Context,
-    private val onMainLayoutClick: (position: Int) -> Unit
+    private val onMainLayoutClick: (position: Int) -> Unit,
+    private val onDeleteClick: (position: Int, gifId: String) -> Unit
 ): Adapter<VerticalGifsViewHolder>() {
     var gifList: MutableList<Gif> = mutableListOf()
 
@@ -22,8 +23,13 @@ class VerticalGifsAdapter(
         notifyDataSetChanged()
     }
 
+    fun removeGif(position: Int) {
+        this.gifList.removeAt(position)
+        notifyItemRemoved(position)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalGifsViewHolder {
-        return VerticalGifsViewHolder.from(parent, context, onMainLayoutClick)
+        return VerticalGifsViewHolder.from(parent, context, onMainLayoutClick, onDeleteClick)
     }
 
     override fun getItemCount(): Int = gifList.size

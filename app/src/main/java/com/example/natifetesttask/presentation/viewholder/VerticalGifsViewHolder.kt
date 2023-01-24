@@ -1,6 +1,7 @@
 package com.example.natifetesttask.presentation.viewholder
 
 import android.content.Context
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
@@ -13,7 +14,8 @@ import com.facebook.shimmer.ShimmerDrawable
 class VerticalGifsViewHolder(
     private val context: Context,
     private val binding: ItemVerticalGifsBinding,
-    private val onMainLayoutClick: (position: Int) -> Unit
+    private val onMainLayoutClick: (position: Int) -> Unit,
+    private val onDeleteClick: (position: Int, gifId: String) -> Unit
 ): ViewHolder(binding.root) {
     fun bind(gif: Gif, position: Int) {
         val shimmer = Shimmer.AlphaHighlightBuilder()
@@ -38,15 +40,21 @@ class VerticalGifsViewHolder(
             .into(binding.ivMainImage)
 
         binding.mainLayout.setOnClickListener {
-            onMainLayoutClick.invoke(position)
+            Log.i("tttt", position.toString())
+            Log.i("tttt", this.adapterPosition.toString())
+            onMainLayoutClick.invoke(this.adapterPosition)
+        }
+
+        binding.ivAddToBlackList.setOnClickListener {
+            onDeleteClick.invoke(this.adapterPosition, gif.id)
         }
     }
 
     companion object {
-        fun from(parent: ViewGroup, context: Context, onMainLayoutClick: (position: Int) -> Unit): VerticalGifsViewHolder {
+        fun from(parent: ViewGroup, context: Context, onMainLayoutClick: (position: Int) -> Unit, onDeleteClick: (position: Int, gifId: String) -> Unit): VerticalGifsViewHolder {
             val inflater = LayoutInflater.from(parent.context)
             val binding = ItemVerticalGifsBinding.inflate(inflater, parent, false)
-            return VerticalGifsViewHolder(context, binding, onMainLayoutClick)
+            return VerticalGifsViewHolder(context, binding, onMainLayoutClick, onDeleteClick)
         }
     }
 }

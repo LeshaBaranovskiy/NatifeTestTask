@@ -4,7 +4,7 @@ plugins {
     id 'kotlin-kapt'
 }
 
-def VERSION_DB = 2
+def VERSION_DB = 3
 
 android {
     namespace 'com.example.natifetesttask'

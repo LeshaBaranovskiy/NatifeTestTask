@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.core.widget.doOnTextChanged
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,9 +19,14 @@ import com.example.natifetesttask.common.util.result.asFailure
 import com.example.natifetesttask.common.util.result.asSuccess
 import com.example.natifetesttask.common.util.result.getErrorInfo
 import com.example.natifetesttask.common.util.result.isSuccess
+import com.example.natifetesttask.data.local.dbentity.DBBlackListEntity
 import com.example.natifetesttask.databinding.FragmentSerachGifsBinding
+import com.example.natifetesttask.domain.model.entity.Gif
 import com.example.natifetesttask.domain.params.SearchParams
+import com.example.natifetesttask.domain.viewmodel.DbBlackListViewModel
+import com.example.natifetesttask.domain.viewmodel.DbLastQueriesViewModel
 import com.example.natifetesttask.domain.viewmodel.GifsViewModel
+import com.example.natifetesttask.domain.viewmodel.SharedDataViewModel
 import com.example.natifetesttask.presentation.adapter.VerticalGifsAdapter
 import com.example.natifetesttask.presentation.navigation.FragmentNavigation
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +39,10 @@ class SearchGifsFragment: BaseFragment(R.layout.fragment_serach_gifs) {
     private val binding by viewBinding<FragmentSerachGifsBinding>()
 
     private val gifsViewModel: GifsViewModel by viewModels { viewModelFactory }
+    private val dbBlackListViewModel: DbBlackListViewModel by viewModels { viewModelFactory }
+    private val dbLastQueriesViewModel: DbLastQueriesViewModel by viewModels { viewModelFactory }
+
+    private val sharedDataViewModel: SharedDataViewModel by activityViewModels()
 
     private lateinit var verticalGifsAdapter: VerticalGifsAdapter
 
@@ -45,17 +55,26 @@ class SearchGifsFragment: BaseFragment(R.layout.fragment_serach_gifs) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        initData()
         handleOnBackPressed()
         initAdapter()
         initListeners()
     }
 
+    private fun initData() {
+        dbBlackListViewModel.getAllBlackListGifs().observe(viewLifecycleOwner) {
+            sharedDataViewModel.setBlackList(it.toMutableList())
+        }
+    }
+
     private fun initAdapter() {
-        verticalGifsAdapter = VerticalGifsAdapter(requireContext()) { position ->
+        verticalGifsAdapter = VerticalGifsAdapter(requireContext(), { position ->
             selectedGif(
                 position
             )
-        }
+        }, { position, gifId ->
+            addToBlackList(position, gifId)
+        })
         binding.rvGifs.adapter = verticalGifsAdapter
         binding.rvGifs.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
     }
@@ -83,20 +102,40 @@ class SearchGifsFragment: BaseFragment(R.layout.fragment_serach_gifs) {
         gifsViewModel.gifsSearch(SearchParams(text, LIMIT_COUNT, offset)).observe(viewLifecycleOwner) {
             when(it.isSuccess()) {
                 true -> {
-                    if (it.asSuccess().value.pagination.totalCount == 0 && text.isNotEmpty()) {
-                        managePlaceholder(PlaceholderType.NOT_FOUND)
-                    } else if (text.isEmpty()) {
-                        managePlaceholder(PlaceholderType.EMPTY)
-                    }
-                    else {
-                        showGifs()
-                        if (shouldClear) {
-                            verticalGifsAdapter.removeAllGifs()
+                    with(it.asSuccess().value) {
+                        if (pagination.totalCount == 0 && text.isNotEmpty()) {
+                            managePlaceholder(PlaceholderType.NOT_FOUND)
+                        } else if (text.isEmpty()) {
+                            managePlaceholder(PlaceholderType.EMPTY)
+                        } else {
+                            showGifs()
+                            if (shouldClear) {
+                                verticalGifsAdapter.removeAllGifs()
+                            }
+
+                            if (sharedDataViewModel.blackList.value != null && sharedDataViewModel.blackList.value!!.size > 0) {
+
+                                val checkedGifs: MutableList<Gif> = mutableListOf()
+
+                                for (i in data.indices) {
+                                    for (blackListedItemIter in 0 until sharedDataViewModel.blackList.value!!.size) {
+                                        if (data[i].id == sharedDataViewModel.blackList.value!![blackListedItemIter].gifId) {
+                                            break
+                                        }
+                                        if (blackListedItemIter == sharedDataViewModel.blackList.value!!.size - 1) {
+                                            checkedGifs.add(data[i])
+                                        }
+                                    }
+                                }
+
+                                verticalGifsAdapter.addGifsToGifList(checkedGifs)
+                            } else {
+                                verticalGifsAdapter.addGifsToGifList(it.asSuccess().value.data.toMutableList())
+                            }
+                            currentGifsLoaded += LIMIT_COUNT
                         }
-                        verticalGifsAdapter.addGifsToGifList(it.asSuccess().value.data.toMutableList())
-                        currentGifsLoaded += LIMIT_COUNT
+                        isLoading = false
                     }
-                    isLoading = false
                 }
 
                 false -> {
@@ -134,6 +173,15 @@ class SearchGifsFragment: BaseFragment(R.layout.fragment_serach_gifs) {
 
     private fun selectedGif(position: Int) {
         FragmentNavigation.navigateToSelectedGiftFragment(parentFragmentManager, position, binding.etSearch.text.toString())
+    }
+
+    private fun addToBlackList(position: Int, gifId: String) {
+        dbBlackListViewModel.insertInBlackList(DBBlackListEntity(gifId = gifId)).observe(viewLifecycleOwner) {
+            val newBlackList : MutableList<DBBlackListEntity> = mutableListOf()
+            newBlackList.addAll(sharedDataViewModel.blackList.value!!)
+            newBlackList.add(DBBlackListEntity(gifId = gifId))
+            verticalGifsAdapter.removeGif(position)
+        }
     }
 
     private fun handleOnBackPressed() {

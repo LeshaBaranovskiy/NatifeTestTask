@@ -3,10 +3,8 @@ package com.example.natifetesttask.presentation.fragment
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.MenuHost
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -17,8 +15,10 @@ import com.example.natifetesttask.common.util.result.asSuccess
 import com.example.natifetesttask.common.util.result.getErrorInfo
 import com.example.natifetesttask.common.util.result.isSuccess
 import com.example.natifetesttask.databinding.FragmentSelectedGifBinding
+import com.example.natifetesttask.domain.model.entity.Gif
 import com.example.natifetesttask.domain.params.SearchParams
 import com.example.natifetesttask.domain.viewmodel.GifsViewModel
+import com.example.natifetesttask.domain.viewmodel.SharedDataViewModel
 import com.example.natifetesttask.presentation.adapter.HorizontalGifsAdapter
 
 class SelectedGifFragment: BaseFragment(R.layout.fragment_selected_gif) {
@@ -27,6 +27,8 @@ class SelectedGifFragment: BaseFragment(R.layout.fragment_selected_gif) {
     private val gifsViewModel: GifsViewModel by viewModels { viewModelFactory }
 
     private lateinit var adapter: HorizontalGifsAdapter
+
+    private val sharedDataViewModel: SharedDataViewModel by activityViewModels()
 
     private var offset: Int? = 0
     private var text: String = ""
@@ -75,7 +77,25 @@ class SelectedGifFragment: BaseFragment(R.layout.fragment_selected_gif) {
         gifsViewModel.gifsSearch(SearchParams(text, LIMIT_COUNT, offset ?: 0)).observe(viewLifecycleOwner) {
             when(it.isSuccess()) {
                 true -> {
-                    adapter.addGifsToGifList(it.asSuccess().value.data.toMutableList())
+                    val checkedGifs: MutableList<Gif> = mutableListOf()
+
+                    if (sharedDataViewModel.blackList.value != null && sharedDataViewModel.blackList.value!!.size > 0) {
+                        with(it.asSuccess().value) {
+                            for (i in data.indices) {
+                                for (blackListedItemIter in 0 until sharedDataViewModel.blackList.value!!.size) {
+                                    if (data[i].id == sharedDataViewModel.blackList.value!![blackListedItemIter].gifId) {
+                                        break
+                                    }
+                                    if (blackListedItemIter == sharedDataViewModel.blackList.value!!.size - 1) {
+                                        checkedGifs.add(data[i])
+                                    }
+                                }
+                            }
+                        }
+                        adapter.addGifsToGifList(checkedGifs)
+                    } else {
+                        adapter.addGifsToGifList(it.asSuccess().value.data.toMutableList())
+                    }
                     currentGifsLoaded += LIMIT_COUNT
                     isLoading = false
                 }
